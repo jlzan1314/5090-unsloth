@@ -1,0 +1,7 @@
+模型和数据集文件会自动下载到以下默认缓存目录：
+
+- 模型文件： ~/.cache/huggingface/hub/
+- 数据集文件： ~/.cache/huggingface/datasets/
+
+自定义路径
+set HF_HOME=~\.cache\huggingface
