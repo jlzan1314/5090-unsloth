@@ -1,6 +1,6 @@
+from unsloth import is_bfloat16_supported
 from trl import SFTTrainer
 from transformers import TrainingArguments
-from unsloth import is_bfloat16_supported
 from model import model, tokenizer
 from dataset import dataset, max_seq_length
 
@@ -22,7 +22,7 @@ trainer = SFTTrainer(
         fp16 = not is_bfloat16_supported(), # 如果不支持 bfloat16 则使用 fp16
         bf16 = is_bfloat16_supported(),
         logging_steps = 1,
-        optim = "adamw_8bit",#使用8位AdamW优化器节省显存
+        optim = "adamw_8bit",#使用普通AdamW优化器
         weight_decay = 0.01,# 权重衰减，防止过拟合
         lr_scheduler_type = "linear", # 学习率调度器类型
         seed = 3407, # 随机种子，确保实验可重复
