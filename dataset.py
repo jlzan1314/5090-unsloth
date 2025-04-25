@@ -1,4 +1,5 @@
 from datasets import load_dataset
+from model import  tokenizer
 
 alpaca_prompt = """Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.
 
@@ -27,3 +28,5 @@ pass
 
 dataset = load_dataset("yahma/alpaca-cleaned", split = "train")
 dataset = dataset.map(formatting_prompts_func, batched = True,)
+
+max_seq_length = 2048 # You can change this
