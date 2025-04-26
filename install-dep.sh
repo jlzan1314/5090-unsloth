@@ -38,6 +38,7 @@ if [[ $EUID -ne 0 ]]; then
    exit 1
 fi
 
+#跳过安装
 echo -e "\n[STEP] ${YELLOW}Updating repositories and installing basic dependencies...${NC}"
 apt-get update && apt-get install -y \
     build-essential \
@@ -45,18 +46,22 @@ apt-get update && apt-get install -y \
     curl \
     cmake \
     ninja-build \
-    gcc-14 g++-14 \
     python3.10 python3.10-venv python3.10-dev \
-    unixodbc
+    unixodbc \
+    libcurl4-openssl-dev
 check_status "critical"
 
+export PATH="$PATH:/usr/local/cuda-12.8/bin/"
+
 # Configure GCC 14 and G++ 14 as defaults
-update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 14
-update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 14
-check_status
+# update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 14
+# update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 14
+# check_status
 
 # Detect the real user who executed sudo
-REAL_USER=$(logname)
+REAL_USER="root"
+
+MAX_JOBS=8
 
 # Define the virtual environment directory in the same folder as this script
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -82,7 +87,8 @@ check_status
 # Install individual packages to ensure they do not block each other
 echo -e "\n[STEP] ${YELLOW}Installing AI-related packages...${NC}"
 
-for package in unsloth scikit-learn matplotlib ninja cmake wheel pybind11; do
+#matplotlib后面再装
+for package in unsloth scikit-learn  ninja cmake wheel pybind11; do
     echo -e "\n[STEP] ${YELLOW}Installing $package...${NC}"
     sudo -u "$REAL_USER" bash -c "
         source $VENV_DIR/bin/activate && \
@@ -94,8 +100,9 @@ done
 echo -e "\n[STEP] ${YELLOW}Installing PyTorch...${NC}"
 sudo -u "$REAL_USER" bash -c "
     source $VENV_DIR/bin/activate && \
-    pip install --force-reinstall torch torchvision torchaudio --pre --index-url https://download.pytorch.org/whl/nightly/cu128
+    pip install  torch torchvision torchaudio --pre --index-url https://download.pytorch.org/whl/nightly/cu128
 "
+#--force-reinstall
 check_status
 
 echo -e "\n[STEP] ${YELLOW}Installing Xformers...${NC}"
@@ -104,13 +111,10 @@ sudo -u "$REAL_USER" bash -c "
 
     # Remove old installation if it exists
     if [ -d '$SCRIPT_DIR/xformers' ]; then
-        echo 'Removing old Xformers installation...'
-        rm -rf '$SCRIPT_DIR/xformers'
+        # Clone the Xformers repo from an alternate PR
+        echo 'Cloning Xformers from an alternate PR...'
+        git clone https://github.com/maludwig/xformers.git '$SCRIPT_DIR/xformers' || { echo '${RED}Error cloning Xformers${NC}'; exit 1; }
     fi
-
-    # Clone the Xformers repo from an alternate PR
-    echo 'Cloning Xformers from an alternate PR...'
-    git clone https://github.com/maludwig/xformers.git '$SCRIPT_DIR/xformers' || { echo '${RED}Error cloning Xformers${NC}'; exit 1; }
 
     cd '$SCRIPT_DIR/xformers'
 
@@ -132,24 +136,22 @@ check_status
 echo -e "\n[STEP] ${YELLOW}Installing vllm...${NC}"
 sudo -u "$REAL_USER" bash -c "
     export VLLM_INSTALL_PUNICA_KERNELS=1
-    export TORCH_CUDA_ARCH_LIST='12.0'
+    export TORCH_CUDA_ARCH_LIST='12.0'W
     export CUDA_HOME=/usr/local/cuda
     export PATH=\$CUDA_HOME/bin:\$PATH
     export LD_LIBRARY_PATH=\$CUDA_HOME/lib64:\${LD_LIBRARY_PATH:-}
     source $VENV_DIR/bin/activate
 
     # Remove old vllm installation if it exists
-    if [ -d '$SCRIPT_DIR/vllm' ]; then
+    if [ ! -d '$SCRIPT_DIR/vllm' ]; then
         echo 'Removing old vllm installation...'
-        rm -rf '$SCRIPT_DIR/vllm'
+        echo 'Cloning vllm at the commit by @oteroantoniogom...'
+        git clone https://github.com/vllm-project/vllm.git '$SCRIPT_DIR/vllm' || { echo '${RED}Error cloning vllm${NC}'; exit 1; }
+        cd '$SCRIPT_DIR/vllm'
+
+        # Checkout a specific commit
+        git checkout 5d8e1c9279678b3342d9618167121e758ed00c05 || { echo '${RED}Error checking out commit${NC}'; exit 1; }
     fi
-
-    echo 'Cloning vllm at the commit by @oteroantoniogom...'
-    git clone https://github.com/vllm-project/vllm.git '$SCRIPT_DIR/vllm' || { echo '${RED}Error cloning vllm${NC}'; exit 1; }
-    cd '$SCRIPT_DIR/vllm'
-
-    # Checkout a specific commit
-    git checkout 5d8e1c9279678b3342d9618167121e758ed00c05 || { echo '${RED}Error checking out commit${NC}'; exit 1; }
 
     cd '$SCRIPT_DIR/vllm'
 
@@ -161,7 +163,7 @@ sudo -u "$REAL_USER" bash -c "
 
     echo 'Installing vllm...'
     # Determine the number of available cores and set MAX_JOBS to cores-1 (or 1 if only one core is available)
-    CORES=\$(nproc)
+    CORES=8
     if [ \"\$CORES\" -gt 1 ]; then
         MAX_JOBS=\$((CORES - 1))
     else
@@ -189,14 +191,16 @@ sudo -u "$REAL_USER" bash -c "
     source $VENV_DIR/bin/activate
 
     # Remove any old Triton installation if it exists
-    if [ -d '$SCRIPT_DIR/triton' ]; then
-        echo 'Removing old Triton installation...'
-        rm -rf '$SCRIPT_DIR/triton'
-    fi
+    #if [ -d '$SCRIPT_DIR/triton' ]; then
+    #    echo 'Removing old Triton installation...'
+    #    rm -rf '$SCRIPT_DIR/triton'
+    #fi
 
-    # Clone the Triton repository from your patch-1 branch
-    echo 'Cloning Triton from your GitHub on patch-1 branch...'
-    git clone --branch patch-1 https://github.com/oteroantoniogom/triton.git '$SCRIPT_DIR/triton' || { echo '${RED}Error cloning Triton${NC}'; exit 1; }
+    export LD_LIBRARY_PATH="/opt/gcc-14/lib64/:\$LD_LIBRARY_PATH"
+
+    ## Clone the Triton repository from your patch-1 branch
+    #echo 'Cloning Triton from your GitHub on patch-1 branch...'
+    #git clone --branch patch-1 https://github.com/oteroantoniogom/triton.git '$SCRIPT_DIR/triton' || { echo '${RED}Error cloning Triton${NC}'; exit 1; }
 
     cd '$SCRIPT_DIR/triton'
 
@@ -209,7 +213,7 @@ sudo -u "$REAL_USER" bash -c "
 
     # Install Triton from source
     echo 'Building and installing Triton...'
-    pip install -e python || { echo '${RED}Error installing Triton from source${NC}'; exit 1; }
+    pip install -e python --no-build-isolation -vvvv || { echo '${RED}Error installing Triton from source${NC}'; exit 1; }
 
     cd ..
 "
