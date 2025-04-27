@@ -17,7 +17,7 @@ triton,vllm,Xformers 采用打补丁编译安装方式
 某些网站可能需要魔法打开
 如: https://github.com
 如: https://download.pytorch.org
-
+如: https://ftp.gnu.org
 
 ## 1.  配置软件源
 自带的软件源非常缓慢,替换成阿里云的,这个是Ubuntu 22.04发行版本的源
