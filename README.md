@@ -58,7 +58,7 @@ sudo make install
 ln -sf /opt/gcc-14/bin/gcc /usr/bin/gcc
 ln -sf /opt/gcc-14/bin/g++ /usr/bin/g++
 ```
-## 2. 安装CUDA 驱动
+## 3. 安装CUDA 驱动
 ```
 get https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb
 sudo dpkg -i cuda-keyring_1.1-1_all.deb

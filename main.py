@@ -28,7 +28,7 @@ trainer = SFTTrainer(
         seed = 3407, # 随机种子，确保实验可重复
         output_dir = "outputs",  # 输出目录
         report_to = "none",  # 不使用外部监控工具
-        save_strategy = ["tensorboard"],    #可视化管理工具
+        save_strategy = "steps",    # 按步数保存
         save_steps = 500,           # 每 500 步保存一次
         save_total_limit = 2,       # 最多保留 3 个检查
     ),
