@@ -8,7 +8,7 @@ triton,vllm,Xformers 采用打补丁编译安装方式
 
 适配环境如下：
 - 系统：Ubuntu 22.04 LTS
-- 显卡：NVIDIA GeForce RTX 5090
+- 显卡：NVIDIA GeForce RTX 5090d
 - 驱动：cuda-toolkit-12-8
 - 用户: root
 - venv: /root/venv/
