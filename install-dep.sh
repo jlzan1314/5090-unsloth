@@ -110,7 +110,7 @@ sudo -u "$REAL_USER" bash -c "
     source $VENV_DIR/bin/activate
 
     # Remove old installation if it exists
-    if [ -d '$SCRIPT_DIR/xformers' ]; then
+    if [ ! -d '$SCRIPT_DIR/xformers' ]; then
         # Clone the Xformers repo from an alternate PR
         echo 'Cloning Xformers from an alternate PR...'
         git clone https://github.com/maludwig/xformers.git '$SCRIPT_DIR/xformers' || { echo '${RED}Error cloning Xformers${NC}'; exit 1; }
